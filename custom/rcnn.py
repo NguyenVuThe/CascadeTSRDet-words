@@ -209,7 +209,7 @@ class MyGeneralizedRCNN(nn.Module):
         images = self.preprocess_image(batched_inputs)
         features = self.backbone(images.tensor)
 
-         # ADD WORD DATA HERE - MAIN PROBLEM
+        # ADD WORD DATA HERE - MAIN PROBLEM
         word_data_list = [x["word_data"] for x in batched_inputs]
 
         if detected_instances is None:
