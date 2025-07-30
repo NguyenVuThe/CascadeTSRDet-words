@@ -16,10 +16,8 @@ from detectron2.modeling import GeneralizedRCNNWithTTA
 from detectron2.data.datasets.coco import register_coco_instances
 from layout_trainer import LayoutTrainer
 import yaml
-# logging.basicConfig(
-#     level=logging.DEBUG,  # Set level to DEBUG
-#     format='%(asctime)s - %(message)s'
-# )
+
+#logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(message)s')
 class Trainer(LayoutTrainer):
     """
     We use the "DefaultTrainer" which contains pre-defined default logic for

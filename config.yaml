@@ -14,7 +14,7 @@ FinTabNet:
     config_file: "model_config/fintabnet.yaml"
     meta:
         thing_classes: ['table', 'table column', 'table row', 'table spanning cell', 'table projected row header', 'table column header']
-    resume: False
+    resume: True
 
 SciTSR:
     train_set_name: "scitsr_train"

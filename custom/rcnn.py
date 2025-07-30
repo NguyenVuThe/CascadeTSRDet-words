@@ -211,6 +211,11 @@ class MyGeneralizedRCNN(nn.Module):
 
         # ADD WORD DATA HERE - MAIN PROBLEM
         word_data_list = [x["word_data"] for x in batched_inputs]
+        # if word_data_list:
+        #     print(f"[RCNN] Sample word: {word_data_list[0][0]}")
+        # else:
+        #     print("[RCNN] No word_data received!")
+
 
         if detected_instances is None:
             if self.proposal_generator is not None:
