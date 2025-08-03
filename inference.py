@@ -24,6 +24,7 @@ import matplotlib.patches as patches
 from matplotlib.patches import Patch
 from detectron2.config import get_cfg
 from detectron2.engine import DefaultPredictor
+from custom_predictor import CustomPredictor
 import postprocess
 from copy import copy
 #from mmocr.utils.ocr import MMOCR
@@ -47,7 +48,7 @@ def build_model(config_path, model_path, device):
     cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5
     #cfg.INPUT.MAX_SIZE_TEST = 1000
     
-    predictor = DefaultPredictor(cfg)
+    predictor = CustomPredictor(cfg)
 
     return predictor
     #outputs = predictor(im)
@@ -853,7 +854,7 @@ class TableExtractionPipeline(object):
 
         return out_formats
 
-    def recognize(self, img, tokens=None, out_objects=False, out_cells=False,
+    def recognize(self, img, word_data, tokens=None, out_objects=False, out_cells=False,
                   out_html=False, out_csv=False):
         out_formats = {}
         if self.str_model is None:
@@ -869,13 +870,23 @@ class TableExtractionPipeline(object):
 
         # Run input image through the model
         #outputs = self.str_model([img_tensor.to(self.str_device)])
-        outputs = self.str_model(img)
+        #print(f"[Before str model] Number of words: {len(word_data)}")
+        outputs = self.str_model(img, word_data=word_data)
+        #print(f"[After str model] Outputs: {outputs}")   
         #outputs = filter_predictions_with_confidence(outputs, 0.6)
 
         output_dict = {}
-        output_dict["pred_boxes"] = outputs["instances"].pred_boxes
-        output_dict["scores"] = outputs["instances"].scores
-        output_dict["pred_classes"] = outputs["instances"].pred_classes
+        instances = outputs["instances"]
+
+        output_dict["pred_boxes"] = instances.pred_boxes
+        output_dict["scores"] = instances.scores
+        output_dict["pred_classes"] = instances.pred_classes
+
+        # ✅ LOGGING — Summary information
+        # print(f"[INFO] Found {len(instances)} predictions")
+        # print(f"Boxes: {instances.pred_boxes.tensor.cpu().numpy()}")
+        # print(f"Scores: {instances.scores.cpu().numpy()}")
+        # print(f"Classes: {instances.pred_classes.cpu().numpy()}")
 
         if isinstance(img, Image.Image):
             image_size = img.size
@@ -997,6 +1008,7 @@ def main():
     num_files = len(img_files)
     random.shuffle(img_files)
 
+    words_dir = r"D:\MyWorking\dataset\FinTabNet.c\FinTabNet.c-Structure\words"
     for count, img_file in enumerate(img_files):
         print("({}/{})".format(count+1, num_files))
         img_path = os.path.join(args.image_dir, img_file)
@@ -1004,6 +1016,13 @@ def main():
         img = cv2.imread(img_path)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         print("Image loaded.")
+
+        #ADD WORDS HERE
+        words_path = os.path.join(words_dir, img_file.replace(".jpg", "_words.json"))
+        with open(words_path, 'r') as f:
+            word_data = json.load(f)
+            # print(f"[Main Inference] Words loaded from {words_path}")
+            # print(f"[Main Inference] Number of words: {len(word_data)}")
 
         if not args.words_dir is None:
             tokens_path = os.path.join(args.words_dir, img_file.replace(".jpg", "_words.json"))
@@ -1031,9 +1050,11 @@ def main():
         img = cv2.copyMakeBorder(img, 2, 2, 2, 2, cv2.BORDER_CONSTANT, None, value=(255,255,255))
 
         if args.mode == 'recognize':
-            extracted_table = pipe.recognize(img, tokens, out_objects=args.objects, out_cells=args.csv,
+            #print(f"[Before pipe] Number of words: {len(word_data)}")
+            extracted_table = pipe.recognize(img, word_data, tokens, out_objects=args.objects, out_cells=args.csv,
                                 out_html=args.html, out_csv=args.csv)
             print("Table(s) recognized.")
+            #print(f"[After pipe] Outputs: {extracted_table}")
 
             for key, val in extracted_table.items():
                 output_result(key, val, args, img, img_file)

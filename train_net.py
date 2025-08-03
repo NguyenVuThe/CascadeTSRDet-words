@@ -16,10 +16,8 @@ from detectron2.modeling import GeneralizedRCNNWithTTA
 from detectron2.data.datasets.coco import register_coco_instances
 from layout_trainer import LayoutTrainer
 import yaml
-# logging.basicConfig(
-#     level=logging.DEBUG,  # Set level to DEBUG
-#     format='%(asctime)s - %(message)s'
-# )
+
+#logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(message)s')
 class Trainer(LayoutTrainer):
     """
     We use the "DefaultTrainer" which contains pre-defined default logic for
@@ -58,6 +56,12 @@ def setup(args):
     
     return cfg
 
+def count_parameters(model):
+    total = sum(p.numel() for p in model.parameters())
+    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    logging.debug(f"Total parameters: {total:,}")
+    logging.debug(f"Trainable parameters: {trainable:,}")
+
 def main(args):
     if isinstance(args, dict):
         args = argparse.Namespace(**args)
@@ -77,6 +81,11 @@ def main(args):
     #    return res
 
     trainer = LayoutTrainer(cfg)
+
+    # Count and print model parameters
+    model = trainer.model
+    count_parameters(model)
+
     trainer.resume_or_load(resume=args.resume)
     if cfg.TEST.AUG.ENABLED:
         trainer.register_hooks([hooks.EvalHook(0, lambda: trainer.test_with_TTA(cfg, trainer.model))])

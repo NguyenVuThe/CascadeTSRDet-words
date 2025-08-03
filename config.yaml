@@ -3,18 +3,18 @@ FinTabNet:
     val_set_name: "fintabnet_val"
     test_set_name: "fintabnet_test"
 
-    train_image_path: "D:/MyWorking/dataset/FinTabNet.c/FinTabNet.c-Structure/images"
-    val_image_path: "D:/MyWorking/dataset/FinTabNet.c/FinTabNet.c-Structure/images"
-    test_image_path: "D:/MyWorking/dataset/FinTabNet.c/FinTabNet.c-Structure/images"
+    train_image_path: "D:/MyWorking/dataset/dataset/images"
+    val_image_path: "D:/MyWorking/dataset/dataset/images"
+    test_image_path: "D:/MyWorking/dataset/dataset/images"
 
-    train_json_path: "D:/MyWorking/CascadeTSRDetSEMv2/dataset/ftbc_full_6classes_train.json"
-    val_json_path: "D:/MyWorking/CascadeTSRDetSEMv2/dataset/ftbc_full_6classes_val.json"
-    test_json_path: "D:/MyWorking/CascadeTSRDetSEMv2/dataset/ftbc_full_6classes_test.json"
+    train_json_path: "D:/MyWorking/dataset/dataset/ftbc_full_6classes_train.json"
+    val_json_path: "D:/MyWorking/dataset/dataset/ftbc_full_6classes_val.json"
+    test_json_path: "D:/MyWorking/dataset/dataset/ftbc_full_6classes_test.json"
 
     config_file: "model_config/fintabnet.yaml"
     meta:
         thing_classes: ['table', 'table column', 'table row', 'table spanning cell', 'table projected row header', 'table column header']
-    resume: False
+    resume: True
 
 SciTSR:
     train_set_name: "scitsr_train"
