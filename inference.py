@@ -882,7 +882,7 @@ class TableExtractionPipeline(object):
         output_dict["scores"] = instances.scores
         output_dict["pred_classes"] = instances.pred_classes
 
-        # ✅ LOGGING — Summary information
+        # LOGGING — Summary information
         # print(f"[INFO] Found {len(instances)} predictions")
         # print(f"Boxes: {instances.pred_boxes.tensor.cpu().numpy()}")
         # print(f"Scores: {instances.scores.cpu().numpy()}")

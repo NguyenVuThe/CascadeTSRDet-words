@@ -58,20 +58,7 @@ def get_words_in_box(self, box, word_data):
                 and x2 >= word["bbox"][2] and y2 >= word["bbox"][3]]
 ```
 ### 4. BERT and FFN
-- We are currently using FinBERT, the output dimesion is 768:
-```python
-# BERT
-Total parameters: 109,482,240
-Trainable parameters: 109,482,240
-
-# Original
-Total parameters: 86,654,917
-Trainable parameters: 86,401,359
-
-# This model
-Total parameters: 199,022,789
-Trainable parameters: 198,769,231
-```
+- We are currently using FinBERT, the output dimesion is 768
 
 ## [27-07-2025] - Custom Inference Pipeline with Word Data
 
@@ -110,8 +97,78 @@ Trainable parameters: 198,769,231
 
 
 ### 3. Problem
+#### a. No predictions
 The model is running okay, but the predictions are not made. You can fix this threshold to observe the output of the model and predictions. We have tried Threshold = 0.05, and it comes out with class and bbox but it still makes no prediction. 
 ```python
 # inference.py, line 48
 cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5
 ```
+#### b. The parameter of BERT is too large
+Maybe we should change the BERT, and find a reliable reason the right BERT.
+```python
+# BERT
+Total parameters: 109,482,240
+Trainable parameters: 109,482,240
+
+# Original
+Total parameters: 86,654,917
+Trainable parameters: 86,401,359
+
+# This model
+Total parameters: 199,022,789
+Trainable parameters: 198,769,231
+```
+
+#### c. What is the right learning rate?
+Original
+```python
+STEPS: (84375, )
+MAX_ITER: 112500
+IMS_PER_BATCH: 16
+BASE_LR: 0.02
+CHECKPOINT_PERIOD: 10000
+```
+Schedule
+```python
+STEPS: (30000, 40000)
+MAX_ITER: 50000
+IMS_PER_BATCH: 2
+BASE_LR: 0.0025
+CHECKPOINT_PERIOD: 5000
+```
+
+
+#### d. What is the logic of training?
+- Foward Pass (main things we are doing)
+- Compute Loss
+- Backproagation
+- Optimizer
+#### e. How the postprocess works?
+Firstly, from the outputs of the model, we wil performance via objects.
+```python
+Sample boxes: tensor([[243.9738,   2.2211, 294.8190,  79.1781],
+        [  2.0276,   2.2764, 294.9039,  79.2712],
+        [181.9968,   2.1392, 243.9308,  79.1556]])
+
+Sample labels: tensor([1, 0, 1])
+
+Sample scores: tensor([0.9992, 0.9990, 0.9990])
+``` 
+To
+```python
+Objects: table column, score: 0.9992096424102783, bbox: [243.9738006591797, 2.221088171005249, 294.81903076171875, 79.17813873291016]
+```
+From this, we perform `refined_rows` and `refined columns` with NMS
+- Sort the highest confidence score
+- Remove the ovelap
+
+#### f. Try to run Google Colab.
+ok
+
+#### g. Choices
+- What BERT should I use?
+- How should I concat text embeddings and visual features
+#### What is the point of this thesis?
+- The stages?
+- The BERTs?
+- The postprocess logic(most reasonable)
