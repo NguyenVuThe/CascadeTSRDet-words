@@ -172,3 +172,20 @@ ok
 - The stages?
 - The BERTs?
 - The postprocess logic(most reasonable)
+
+## [14-08-2025] - Run with Colab
+### Settings
+```python
+STEPS: (30000, 40000)
+MAX_ITER: 50000
+
+IMS_PER_BATCH: 4
+BASE_LR: 0.005
+
+CHECKPOINT_PERIOD: 1000
+EVAL_PERIOD: 5000
+```
+### Observation
+Set up - 5m
+19 iter - 12m
+39 iter- 20m

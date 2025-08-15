@@ -108,7 +108,7 @@ class LayoutMapper:
 
         #Take words.json file
         #words_dir = r"D:\MyWorking\dataset\FinTabNet.c\FinTabNet.c-Structure\words"
-        words_dir = "/content/data/words"
+        words_dir = "/content/data/words/words"
         file_path = dataset_dict["file_name"]
         file_name = os.path.basename(file_path)
         word_json_name = file_name.replace('.jpg', '_words.json')
