@@ -4,58 +4,58 @@
 
 import os
 import json
+import numpy as np
 import torch
 from tqdm import tqdm
-from transformers import BertTokenizer, BertModel
+from transformers import AutoTokenizer, AutoModel
 
 # ==== CONFIG ====
-WORDS_DIR = "D:\MyWorking\dataset\FinTabNet.c\FinTabNet.c-Structure\words"
+INPUT_DIR = "D:\MyWorking\dataset\FinTabNet.c\FinTabNet.c-Structure\words"
 OUTPUT_DIR = "D:\MyWorking\dataset\FinTabNet.c\FinTabNet.c-Structure\embeds"
-BERT_NAME = "prosusai/finbert"
-BATCH_SIZE = 128   # process this many words at once
+MODEL_NAME = "distilbert-base-uncased"
+EMB_DIM = 768   # process this many words at once
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# ==== Device ====
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# Load BERT model
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+model = AutoModel.from_pretrained(MODEL_NAME).eval()
+if torch.cuda.is_available():
+    model = model.cuda()
 
-# ==== Load BERT ====
-tokenizer = BertTokenizer.from_pretrained(BERT_NAME)
-bert_model = BertModel.from_pretrained(BERT_NAME).to(device)
-bert_model.eval()
+# Step 1: Collect tokens
+all_tokens = set()
+print("🔍 Collecting tokens...")
+for fname in os.listdir(INPUT_DIR):
+    if fname.endswith(".json"):
+        with open(os.path.join(INPUT_DIR, fname), "r", encoding="utf-8") as f:
+            data = json.load(f)
+        for w in data:
+            tok = w["text"].strip().lower()
+            if tok:
+                all_tokens.add(tok)
 
-print(f"🔹 Using device: {device}")
-print(f"🔹 Precomputing embeddings from {WORDS_DIR} → {OUTPUT_DIR}")
+print(f"✅ Collected {len(all_tokens)} unique tokens.")
 
-with torch.no_grad():
-    for json_file in tqdm(os.listdir(WORDS_DIR)):
-        if not json_file.endswith(".json"):
-            continue
+# Step 2: Build vocab
+token2id = {tok: i for i, tok in enumerate(sorted(all_tokens))}
+with open(os.path.join(OUTPUT_DIR, "token2id.json"), "w", encoding="utf-8") as f:
+    json.dump(token2id, f, ensure_ascii=False, indent=2)
 
-        # Load OCR word data
-        json_path = os.path.join(WORDS_DIR, json_file)
-        with open(json_path, "r", encoding="utf-8") as f:
-            words_data = json.load(f)
+# Step 3: Encode embeddings
+embeddings = np.zeros((len(token2id), EMB_DIM), dtype=np.float32)
 
-        texts = [w.get("text", "").strip() or "[PAD]" for w in words_data]
-        bboxes = [w.get("bbox", []) for w in words_data]
+print("⚡ Encoding tokens with BERT...")
+for tok, idx in tqdm(token2id.items()):
+    inputs = tokenizer(tok, return_tensors="pt", truncation=True, max_length=16)
+    if torch.cuda.is_available():
+        inputs = {k: v.cuda() for k, v in inputs.items()}
+    with torch.no_grad():
+        outputs = model(**inputs)
+    vec = outputs.last_hidden_state[:, 0, :].squeeze().cpu().numpy()  # [CLS] embedding
+    embeddings[idx] = vec
 
-        embeddings = []
-        # Process in batches
-        for i in range(0, len(texts), BATCH_SIZE):
-            batch_texts = texts[i:i + BATCH_SIZE]
-            inputs = tokenizer(batch_texts, return_tensors="pt", truncation=True,
-                               max_length=32, padding=True).to(device)
-            outputs = bert_model(**inputs)
-            batch_emb = outputs.last_hidden_state.mean(dim=1)  # [batch_size, 768]
-            embeddings.extend(batch_emb.cpu())
-
-        # Combine bbox + text + embedding
-        page_data = [
-            {"bbox": bbox, "text": text, "embedding": emb}
-            for bbox, text, emb in zip(bboxes, texts, embeddings)
-        ]
-
-        torch.save(page_data, os.path.join(OUTPUT_DIR, json_file.replace(".json", ".pt")))
-
-print("✅ All pages saved with bbox + text + embedding (GPU accelerated)")
+# Step 4: Save embeddings
+np.save(os.path.join(OUTPUT_DIR, "embeddings.npy"), embeddings)
+print(f"✅ Saved embeddings to {OUTPUT_DIR}/embeddings.npy")
+print(f"✅ Saved vocab to {OUTPUT_DIR}/token2id.json")
