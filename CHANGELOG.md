@@ -1,3 +1,11 @@
+# Configs Setting
+## Path
+### 1. `model_config/fintabnet.yaml`
+### 2. `layout_trainer.py` line 110
+### 3. `inference.py` line 1011
+### 4. `config.yaml`
+### 5. `cascade_rcnn.py`
+
 # Changelog
 ## [Past 1] - Setting some defaults
 ### 1. `MyGeneralizedRCNN` instead of `GeneralizedRCNN`
@@ -189,3 +197,20 @@ EVAL_PERIOD: 5000
 Set up - 5m
 19 iter - 12m
 39 iter- 20m
+
+## [23-08-2025] - Use Precompute Embeddings
+### 1. Create `words_to_embed.py`
+This script creates two files:
+- `embeddings.npy`
+- `token2id`
+
+### 2. Add `text_embedding.py` 
+### 3. Change the `run_stage` function (stage 2) to precompute
+- The path is in line 99
+```python
+self.text_lookup = TextEmbeddingLookup(
+            emb_path="embeddings/embeddings.npy",
+            vocab_path="embeddings/token2id.json"
+        )
+```
+- Change the `run_stage` function
