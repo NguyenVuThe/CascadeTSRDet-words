@@ -2,3 +2,5 @@ log
 __pycache__
 debug.txt
 CHANGELOG.md
+embeddings/embeddings.npy
+embeddings/token2id.json

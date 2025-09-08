@@ -36,6 +36,8 @@ class LayoutMapper:
         self.resized_height = 1333
         self.resized_width = 800
 
+        self.words_dir = "D:/MyWorking/dataset/FinTabNet.c/FinTabNet.c-Structure/words"
+
     def get_aug_list(self):
         if self.if_augmentation:
             return [T.ResizeShortestEdge(self.shortest_side_range, self.resized_height, sample_style='choice'),]
@@ -105,14 +107,10 @@ class LayoutMapper:
                 for annotation in dataset_dict.pop("annotations")
                 ]
         
-
-        #Take words.json file
-        #words_dir = r"D:\MyWorking\dataset\FinTabNet.c\FinTabNet.c-Structure\words"
-        words_dir = "/content/data/words/words"
         file_path = dataset_dict["file_name"]
         file_name = os.path.basename(file_path)
         word_json_name = file_name.replace('.jpg', '_words.json')
-        word_json_path = os.path.join(words_dir, word_json_name)
+        word_json_path = os.path.join(self.words_dir, word_json_name)
         with open(word_json_path, 'r') as f:
             word_data = json.load(f)
         dataset_dict['word_data'] = word_data

@@ -19,6 +19,10 @@ import copy
 from transformers import BertTokenizer, BertModel
 import logging
 
+from embeddings.text_embedding import TextEmbeddingLookup
+import numpy as np
+import json
+
 class _ScaleGradient(Function):
     @staticmethod
     def forward(ctx, input, scale):
@@ -79,8 +83,8 @@ class MyCascadeROIHeads(StandardROIHeads):
         )
         self.proposal_matchers = proposal_matchers
         self.num_classes = kwargs.get("num_classes", 7)
-        self.tokenizer = BertTokenizer.from_pretrained("prosusai/finbert")
-        self.bert_model = BertModel.from_pretrained("prosusai/finbert")
+
+        # CUSTOM PART: BERT model for text embedding
         self.text_ffn = nn.Sequential(
             nn.Linear(768, 1024),
             nn.ReLU(),
@@ -92,6 +96,10 @@ class MyCascadeROIHeads(StandardROIHeads):
             nn.Dropout(0.1)
         )
         #self.proposal_features = nn.Embedding(512, 1024)
+        self.text_lookup = TextEmbeddingLookup(
+            emb_path ="D:/MyWorking/dataset/dataset/embeddings.npy",
+            vocab_path ="D:/MyWorking/dataset/dataset/token2id.json"
+        )
 
     @classmethod
     def from_config(cls, cfg, input_shape):
@@ -297,38 +305,102 @@ class MyCascadeROIHeads(StandardROIHeads):
         return proposals
 
     #def _run_stage(self, features, proposal_features, proposals, stage):
-    def _run_stage(self, features, proposals, stage, word_data_list=None):
-        """
-        Args:
-            features (list[Tensor]): #lvl input features to ROIHeads
-            proposals (list[Instances]): #image Instances, with the field "proposal_boxes"
-            stage (int): the current stage
+    # def _run_stage(self, features, proposals, stage, word_data_list=None):
+    #     """
+    #     Args:
+    #         features (list[Tensor]): #lvl input features to ROIHeads
+    #         proposals (list[Instances]): #image Instances, with the field "proposal_boxes"
+    #         stage (int): the current stage
 
-        Returns:
-            Same output as `FastRCNNOutputLayers.forward()`.
-        """
+    #     Returns:
+    #         Same output as `FastRCNNOutputLayers.forward()`.
+    #     """
+    #     proposal_boxes = [x.proposal_boxes for x in proposals]
+    #     logging.debug(f"[Stage {stage}] Running RoIAlign on {len(proposal_boxes)} images.")
+    #     logging.debug(f"[Stage {stage}] Proposal boxes per image: {[len(p) for p in proposal_boxes]}")
+    #     box_features = self.box_pooler(features, [x.proposal_boxes for x in proposals])
+    #     logging.debug(f"[Stage {stage}] RoIAligned feature shape: {box_features.shape}")
+    #     # The original implementation averages the losses among heads,
+    #     # but scale up the parameter gradients of the heads.
+    #     # This is equivalent to adding the losses among heads,
+    #     # but scale down the gradients on features.
+    #     if self.training:
+    #         box_features = _ScaleGradient.apply(box_features, 1.0 / self.num_cascade_stages)
+    #         logging.debug(f"[Stage {stage}] Passing box features through box_head.")
+
+    #     #proposal feature shape: 1, 1024, 1024
+    #     #box features shape: 1024, 256, 7, 7
+
+    #     #box_features, proposal_features = self.box_head[stage](box_features, proposal_features)
+    #     #return self.box_predictor[stage](box_features, proposal_features), proposal_features
+    #     box_features  = self.box_head[stage](box_features)
+    #     logging.debug(f"[Stage {stage}] Box head output shape: {box_features.shape}")
+
+    #     if stage == 2 and word_data_list is not None:
+    #         fused_box_features = []
+    #         start_idx = 0
+    #         for img_idx, (proposal, word_data) in enumerate(zip(proposals, word_data_list)):
+    #             proposal_boxes = proposal.proposal_boxes.tensor  # [N, 4]
+    #             logging.debug(f"[Stage {stage}] Processing image {img_idx} with {len(proposal_boxes)} proposals.")
+    #             num_props = proposal_boxes.shape[0]
+    #             logging.debug(f"[Stage {stage}] Number of proposals: {num_props}")
+    #             visual_feats = box_features[start_idx : start_idx + num_props]  # [N, C]
+    #             logging.debug(f"[Stage {stage}] Visual features shape: {visual_feats.shape}")
+    #             start_idx += num_props
+
+    #             # Text embedding for each proposal
+    #             text_embeds = []
+    #             for i, box in enumerate(proposal_boxes):
+    #                 words = self.get_words_in_box(box.cpu().numpy(), word_data)
+    #                 logging.debug(f"[Stage {stage}] Words in box {i}: {words}")
+    #                 sentence = " ".join(words)
+    #                 logging.debug(f"[Stage {stage}] Sentence for box {i}: {sentence}")
+    #                 # If no words found, use a placeholder
+    #                 if sentence.strip() == "":
+    #                     sentence = "[PAD]"
+    #                 # Tokenize and get BERT embeddings
+    #                 inputs = self.tokenizer(sentence, return_tensors="pt", padding=True, truncation=True).to(visual_feats.device)
+    #                 logging.debug(f"[Stage {stage}] Tokenized inputs for box {i}: {inputs}")
+    #                 # Get BERT embeddings
+    #                 with torch.no_grad():
+    #                     outputs = self.bert_model(**inputs)
+    #                 logging.debug(f"[Stage {stage}] BERT outputs for box {i}: {outputs.last_hidden_state.shape}")
+    #                 pooled = outputs.last_hidden_state.mean(dim=1)  # [1, 768]
+    #                 logging.debug(f"[Stage {stage}] Pooled text embedding for box {i}: {pooled.shape}")
+    #                 text_embeds.append(pooled)
+    #             text_feats = torch.cat(text_embeds, dim=0)  # [N, 768]
+    #             logging.debug(f"[Stage {stage}] Concatenated text features shape: {text_feats.shape}")
+    #             text_feats = self.text_ffn(text_feats)      # [N, 1024]
+    #             logging.debug(f"[Stage {stage}] Text features after FFN shape: {text_feats.shape}")
+
+    #             # Concatenate visual and text features
+    #             fusion_input = torch.cat([visual_feats, text_feats], dim=1)  # [N, 2048]
+    #             logging.debug(f"[Stage {stage}] Fusion input shape: {fusion_input.shape}")
+    #             fused_feats = self.fusion_ffn(fusion_input)                  # [N, 1024]
+    #             logging.debug(f"[Stage {stage}] Fused features shape: {fused_feats.shape}")
+    #             fused_box_features.append(fused_feats)
+    #         box_features = torch.cat(fused_box_features, dim=0)  # [total_props, 1024]
+    #         logging.debug(f"[Stage {stage}] Final box features shape after fusion: {box_features.shape}")
+
+    #         logging.debug(f"Output: {self.box_predictor[stage]}")
+            
+    #     return self.box_predictor[stage](box_features)
+
+    def _run_stage(self, features, proposals, stage, word_data_list=None):
         proposal_boxes = [x.proposal_boxes for x in proposals]
         logging.debug(f"[Stage {stage}] Running RoIAlign on {len(proposal_boxes)} images.")
         logging.debug(f"[Stage {stage}] Proposal boxes per image: {[len(p) for p in proposal_boxes]}")
         box_features = self.box_pooler(features, [x.proposal_boxes for x in proposals])
         logging.debug(f"[Stage {stage}] RoIAligned feature shape: {box_features.shape}")
-        # The original implementation averages the losses among heads,
-        # but scale up the parameter gradients of the heads.
-        # This is equivalent to adding the losses among heads,
-        # but scale down the gradients on features.
+
         if self.training:
             box_features = _ScaleGradient.apply(box_features, 1.0 / self.num_cascade_stages)
             logging.debug(f"[Stage {stage}] Passing box features through box_head.")
 
-        #proposal feature shape: 1, 1024, 1024
-        #box features shape: 1024, 256, 7, 7
-
-        #box_features, proposal_features = self.box_head[stage](box_features, proposal_features)
-        #return self.box_predictor[stage](box_features, proposal_features), proposal_features
         box_features  = self.box_head[stage](box_features)
         logging.debug(f"[Stage {stage}] Box head output shape: {box_features.shape}")
 
-        if stage == 2 and word_data_list is not None:
+        if stage == 0 and word_data_list is not None:
             fused_box_features = []
             start_idx = 0
             for img_idx, (proposal, word_data) in enumerate(zip(proposals, word_data_list)):
@@ -343,39 +415,31 @@ class MyCascadeROIHeads(StandardROIHeads):
                 # Text embedding for each proposal
                 text_embeds = []
                 for i, box in enumerate(proposal_boxes):
-                    words = self.get_words_in_box(box.cpu().numpy(), word_data)
-                    logging.debug(f"[Stage {stage}] Words in box {i}: {words}")
-                    sentence = " ".join(words)
-                    logging.debug(f"[Stage {stage}] Sentence for box {i}: {sentence}")
-                    # If no words found, use a placeholder
-                    if sentence.strip() == "":
-                        sentence = "[PAD]"
-                    # Tokenize and get BERT embeddings
-                    inputs = self.tokenizer(sentence, return_tensors="pt", padding=True, truncation=True).to(visual_feats.device)
-                    logging.debug(f"[Stage {stage}] Tokenized inputs for box {i}: {inputs}")
-                    # Get BERT embeddings
-                    with torch.no_grad():
-                        outputs = self.bert_model(**inputs)
-                    logging.debug(f"[Stage {stage}] BERT outputs for box {i}: {outputs.last_hidden_state.shape}")
-                    pooled = outputs.last_hidden_state.mean(dim=1)  # [1, 768]
-                    logging.debug(f"[Stage {stage}] Pooled text embedding for box {i}: {pooled.shape}")
-                    text_embeds.append(pooled)
+                    words = self.get_words_in_box(box.cpu().numpy(), word_data, drop_symbols=True)
+                    if len(words) == 0:
+                        pooled = torch.zeros(self.text_lookup.dim, device=visual_feats.device)
+                    else:
+                        logging.debug(f"[Stage {stage}] Words in box {i}: {words}")
+                        embs = [self.text_lookup.get(w) for w in words]
+                        pooled_np = np.mean(embs, axis=0)
+                        pooled = torch.tensor(pooled_np, device=visual_feats.device, dtype=visual_feats.dtype)
+
+                    text_embeds.append(pooled.unsqueeze(0)) # [1, 768]
+
                 text_feats = torch.cat(text_embeds, dim=0)  # [N, 768]
                 logging.debug(f"[Stage {stage}] Concatenated text features shape: {text_feats.shape}")
                 text_feats = self.text_ffn(text_feats)      # [N, 1024]
-                logging.debug(f"[Stage {stage}] Text features after FFN shape: {text_feats.shape}")
-
+                logging.debug(f"[Stage {stage}] Text features after FFN shape: {text_feats.shape}")  
                 # Concatenate visual and text features
                 fusion_input = torch.cat([visual_feats, text_feats], dim=1)  # [N, 2048]
                 logging.debug(f"[Stage {stage}] Fusion input shape: {fusion_input.shape}")
                 fused_feats = self.fusion_ffn(fusion_input)                  # [N, 1024]
                 logging.debug(f"[Stage {stage}] Fused features shape: {fused_feats.shape}")
                 fused_box_features.append(fused_feats)
+
             box_features = torch.cat(fused_box_features, dim=0)  # [total_props, 1024]
             logging.debug(f"[Stage {stage}] Final box features shape after fusion: {box_features.shape}")
 
-            logging.debug(f"Output: {self.box_predictor[stage]}")
-            
         return self.box_predictor[stage](box_features)
 
     def _create_proposals_from_boxes(self, boxes, image_sizes):
@@ -416,7 +480,23 @@ class MyCascadeROIHeads(StandardROIHeads):
 
         return proposals
     
-    def get_words_in_box(self, box, word_data):
+    def get_words_in_box(self, box, word_data, min_len: int = 1, drop_symbols: bool = True):
         x1, y1, x2, y2 = box
-        return [word["text"] for word in word_data if x1 <= word["bbox"][0] and y1 <= word["bbox"][1]
-                and x2 >= word["bbox"][2] and y2 >= word["bbox"][3]]
+        words = []
+        for word in word_data:
+            wx1, wy1, wx2, wy2 = word["bbox"]
+            token = word["text"].strip()
+
+            # Check word nằm trong bbox
+            if x1 <= wx1 and y1 <= wy1 and x2 >= wx2 and y2 >= wy2:
+                # Bỏ token quá ngắn
+                if len(token) < min_len:
+                    continue
+                
+                # Nếu drop_symbols = True → bỏ token toàn ký tự .,;:-_
+                if drop_symbols and all(ch in ". ,;:-_`'\"~" for ch in token):
+                    continue
+
+                words.append(token)
+        
+        return words
