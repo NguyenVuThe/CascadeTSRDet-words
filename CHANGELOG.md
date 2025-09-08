@@ -4,7 +4,7 @@
 ### 2. `layout_trainer.py` line 110
 ### 3. `inference.py` line 1011
 ### 4. `config.yaml`
-### 5. `cascade_rcnn.py`
+### 5. `cascade_rcnn.py`, line 99
 
 # Changelog
 ## [Past 1] - Setting some defaults
@@ -214,3 +214,12 @@ self.text_lookup = TextEmbeddingLookup(
         )
 ```
 - Change the `run_stage` function
+
+## [03-09-2025] - Add Config
+
+## [07-09-2025] - Setting Server
+Name: myenv
+- python: 3.11
+- conda install pytorch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 pytorch-cuda=12.1 -c pytorch -c nvidia
+
+

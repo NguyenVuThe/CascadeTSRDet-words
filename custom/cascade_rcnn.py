@@ -19,7 +19,7 @@ import copy
 from transformers import BertTokenizer, BertModel
 import logging
 
-from text_embedding import TextEmbeddingLookup
+from embeddings.text_embedding import TextEmbeddingLookup
 import numpy as np
 import json
 
@@ -97,8 +97,8 @@ class MyCascadeROIHeads(StandardROIHeads):
         )
         #self.proposal_features = nn.Embedding(512, 1024)
         self.text_lookup = TextEmbeddingLookup(
-            emb_path="embeddings/embeddings.npy",
-            vocab_path="embeddings/token2id.json"
+            emb_path ="D:/MyWorking/dataset/dataset/embeddings.npy",
+            vocab_path ="D:/MyWorking/dataset/dataset/token2id.json"
         )
 
     @classmethod

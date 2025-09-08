@@ -8,16 +8,33 @@ import numpy as np
 import torch
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModel
+import re
 
 # ==== CONFIG ====
 INPUT_DIR = "D:\MyWorking\dataset\FinTabNet.c\FinTabNet.c-Structure\words"
 OUTPUT_DIR = "D:\MyWorking\dataset\FinTabNet.c\FinTabNet.c-Structure\embeds"
 MODEL_NAME = "distilbert-base-uncased"
-EMB_DIM = 768   # process this many words at once
+EMB_DIM = 768   
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# Load BERT model
+# ==== TOKEN CLEANING FUNCTION ====
+def clean_token(tok: str) -> str:
+    tok = tok.strip().lower()
+    if not tok:
+        return ""
+    # Normalize numbers
+    if tok.replace(".", "", 1).isdigit():
+        return "<NUM>"
+    # Drop junk punctuation-only tokens
+    if all(ch in ".,;:!?-_=+*/\\'\"`~" for ch in tok):
+        return ""
+    # Keep currencies and %
+    if tok in ["$", "€", "£", "%"]:
+        return tok
+    return tok
+
+# ==== LOAD MODEL ====
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 model = AutoModel.from_pretrained(MODEL_NAME).eval()
 if torch.cuda.is_available():
@@ -26,12 +43,12 @@ if torch.cuda.is_available():
 # Step 1: Collect tokens
 all_tokens = set()
 print("🔍 Collecting tokens...")
-for fname in os.listdir(INPUT_DIR):
+for fname in tqdm(os.listdir(INPUT_DIR)):
     if fname.endswith(".json"):
         with open(os.path.join(INPUT_DIR, fname), "r", encoding="utf-8") as f:
             data = json.load(f)
         for w in data:
-            tok = w["text"].strip().lower()
+            tok = clean_token(w["text"])
             if tok:
                 all_tokens.add(tok)
 
@@ -52,7 +69,7 @@ for tok, idx in tqdm(token2id.items()):
         inputs = {k: v.cuda() for k, v in inputs.items()}
     with torch.no_grad():
         outputs = model(**inputs)
-    vec = outputs.last_hidden_state[:, 0, :].squeeze().cpu().numpy()  # [CLS] embedding
+    vec = outputs.last_hidden_state[:, 0, :].squeeze().cpu().numpy()  # [CLS]
     embeddings[idx] = vec
 
 # Step 4: Save embeddings

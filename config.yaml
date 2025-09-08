@@ -1,15 +1,32 @@
+# CUSTOM_PATHS:
+#     WORDS_DIR: "D:\MyWorking\dataset\FinTabNet.c\FinTabNet.c-Structure/words"
+#     EMBED_PATH: "D:/MyWorking/dataset/dataset/embeddings/embeddings.npy"
+#     VOCAB_PATH: "D:/MyWorking/dataset/dataset/embeddings/token2id.json"
+
+#     # WORDS_DIR: "/content/data/words"
+#     # EMBED_PATH: "embeddings/embeddings.npy"
+#     # VOCAB_PATH: "embeddings/token2id.json"
+
 FinTabNet:
     train_set_name: "fintabnet_train"
     val_set_name: "fintabnet_val"
     test_set_name: "fintabnet_test"
 
-    train_image_path: "/content/data/images"
-    val_image_path: "/content/data/images"
-    test_image_path: "/content/data/images"
+    # train_image_path: "/content/data/images"
+    # val_image_path: "/content/data/images"
+    # test_image_path: "/content/data/images"
 
-    train_json_path: "/content/data/ftbc_full_6classes_train.json"
-    val_json_path: "/content/data/ftbc_full_6classes_val.json"
-    test_json_path: "/content/data/ftbc_full_6classes_test.json"
+    # train_json_path: "/content/data/ftbc_full_6classes_train.json"
+    # val_json_path: "/content/data/ftbc_full_6classes_val.json"
+    # test_json_path: "/content/data/ftbc_full_6classes_test.json"
+
+    train_image_path: "D:/MyWorking/dataset/dataset/images"
+    val_image_path: "D:/MyWorking/dataset/dataset/images"
+    test_image_path: "D:/MyWorking/dataset/dataset/images"
+
+    train_json_path: "D:/MyWorking/dataset/dataset/ftbc_full_6classes_train.json"
+    val_json_path: "D:/MyWorking/dataset/dataset/ftbc_full_6classes_val.json"
+    test_json_path: "D:/MyWorking/dataset/dataset/ftbc_full_6classes_test.json"
 
     config_file: "model_config/fintabnet.yaml"
     meta:

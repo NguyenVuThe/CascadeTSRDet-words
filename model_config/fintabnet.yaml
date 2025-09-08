@@ -67,18 +67,19 @@ SOLVER:
     
     #STEPS: (210000, 250000)
     #MAX_ITER: 270000
-    STEPS: (30000, 40000)
-    MAX_ITER: 50000
+    STEPS: (30000, 45000)
+    MAX_ITER: 100000
 
-    IMS_PER_BATCH: 4
-    BASE_LR: 0.005
+    IMS_PER_BATCH: 2
+    BASE_LR: 0.000875
 
     CHECKPOINT_PERIOD: 1000
 
 INPUT:
     MIN_SIZE_TRAIN: (640, 672, 704, 736, 768, 800)
 
-OUTPUT_DIR: "/content/output"
+#OUTPUT_DIR: "/content/output"
+OUTPUT_DIR: "D:/MyWorking/model/CascadeTSRDet-words/log/log2"
 
 TEST:
     #EVAL_PERIOD: 27000
